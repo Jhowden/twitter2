@@ -20,25 +20,48 @@ get '/auth' do
   session.delete(:request_token)
 
   # at this point in the code is where you'll need to create your user account and store the access token
-  @bananan = User.find_or_create_by_username(username: @access_token.params[:screen_name], 
+  @user = User.find_or_create_by_username(username: @access_token.params[:screen_name], 
     oauth_token: @access_token.params[:oauth_token],
     oauth_secret: @access_token.params[:oauth_token_secret] )
   
-  session[:user_id] = @bananan.id
+  session[:user_id] = @user.id
 
   erb :index
   
 end
 
+get '/status' do
+ @tweetid = Tweet.last.id
+ @sidekiq_id = TweetWorker.perform_async(@tweetid)
+
+ if request.xhr?
+  content_type :json
+  {job_id: @sidekiq_id}.to_json
+end
+redirect to "/status/#{@sidekiq_id}"
+end
+
+get '/status/:job_id' do
+  @jid = params[:job_id]
+  if job_is_complete?(params[:job_id])
+    erb :complete, layout: false
+  # else
+  #   erb :fail, layout: false
+  end
+
+end
 
 
 post '/tweet' do
-  @bananan = User.find(session[:user_id])
 
-  client = Twitter.configure do |config|
-    config.oauth_token = @bananan.oauth_token
-    config.oauth_token_secret = @bananan.oauth_secret
-  end
+  @user = User.find(session[:user_id])
 
-  client.update(params[:jonsdecision])
+  @user.tweet(params[:jonsdecision])
+  
+  # tweet_worker = TweetWorker.new
+
+  # tweet_worker.perform(Tweet.last.id)
+
+  # Twitter.update(params[:jonsdecision])
+
 end

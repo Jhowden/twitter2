@@ -26,3 +26,7 @@ group :test do
 end
 
 gem 'pry'
+
+gem 'redis'
+gem 'sidekiq'
+gem 'sidekiq-scheduler'
